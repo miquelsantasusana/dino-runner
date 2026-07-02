@@ -1,0 +1,166 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #f7f7f7;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.wrap {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  position: relative;
+}
+
+canvas {
+  background: transparent;
+  outline: none;
+  max-width: 96vw;
+}
+
+.hint {
+  color: #999;
+  font-size: 13px;
+  user-select: none;
+}
+
+kbd {
+  background: #eee;
+  border: 1px solid #ccc;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
+/* ---- overlay screens ---- */
+#screens {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#screens.hidden { display: none; }
+
+.screen {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid #535353;
+  border-radius: 8px;
+  padding: 22px 34px;
+  min-width: 280px;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  font-family: "Courier New", monospace;
+  color: #535353;
+}
+
+.screen.hidden { display: none; }
+
+.screen h1 {
+  margin: 0 0 16px;
+  font-size: 26px;
+  letter-spacing: 4px;
+}
+
+.screen h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+
+#room-code {
+  letter-spacing: 6px;
+  background: #eee;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.screen input {
+  font-family: inherit;
+  font-size: 15px;
+  padding: 8px 10px;
+  border: 2px solid #999;
+  border-radius: 4px;
+  width: 180px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+#join-code { width: 90px; text-transform: uppercase; letter-spacing: 4px; }
+
+.screen button {
+  font-family: inherit;
+  font-weight: bold;
+  font-size: 14px;
+  padding: 9px 16px;
+  border: 2px solid #535353;
+  border-radius: 4px;
+  background: #535353;
+  color: #fff;
+  cursor: pointer;
+}
+
+.screen button:hover { background: #333; }
+
+.screen .ghost-btn {
+  background: transparent;
+  color: #535353;
+  border-color: #bbb;
+  margin-top: 10px;
+}
+
+.screen .ghost-btn:hover { background: #f0f0f0; }
+
+.btn-row, .join-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.error { color: #c0392b; font-size: 13px; min-height: 16px; margin: 10px 0 0; }
+.small { font-size: 12px; color: #888; word-break: break-all; }
+
+#player-list, #standings {
+  list-style: none;
+  margin: 12px 0 16px;
+  padding: 0;
+  text-align: left;
+}
+
+#standings { counter-reset: place; }
+
+#player-list li, #standings li {
+  padding: 5px 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#standings li::before {
+  counter-increment: place;
+  content: counter(place) ".";
+  width: 18px;
+  color: #999;
+}
+
+#standings li.winner { font-weight: bold; }
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}

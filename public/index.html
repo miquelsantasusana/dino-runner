@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dino Runner — Multiplayer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <canvas id="game" width="800" height="300"></canvas>
+
+    <div id="screens">
+      <section id="menu" class="screen">
+        <h1>DINO RUNNER</h1>
+        <input id="name" maxlength="12" placeholder="Your name" autocomplete="off" />
+        <div class="btn-row">
+          <button id="btn-solo">Play solo</button>
+          <button id="btn-create">Create room</button>
+        </div>
+        <div class="join-row">
+          <input id="join-code" maxlength="4" placeholder="CODE" autocomplete="off" />
+          <button id="btn-join">Join room</button>
+        </div>
+        <p id="menu-error" class="error"></p>
+      </section>
+
+      <section id="lobby" class="screen hidden">
+        <h2>Room <span id="room-code"></span></h2>
+        <p class="small">Invite friends: <a id="room-link" href="#" target="_blank"></a></p>
+        <ul id="player-list"></ul>
+        <button id="btn-start">Start race</button>
+        <p id="lobby-wait" class="small hidden">Waiting for the host to start&hellip;</p>
+        <button id="btn-lobby-leave" class="ghost-btn">Leave</button>
+      </section>
+
+      <section id="gameover" class="screen hidden">
+        <h2 id="winner-line"></h2>
+        <ol id="standings"></ol>
+        <button id="btn-rematch">Rematch</button>
+        <p id="rematch-wait" class="small hidden">Waiting for the host&hellip;</p>
+        <button id="btn-leave" class="ghost-btn">Leave room</button>
+      </section>
+    </div>
+
+    <p class="hint">Press <kbd>Space</kbd> / <kbd>&uarr;</kbd> to jump &middot; <kbd>&darr;</kbd> to duck &middot; <kbd>Esc</kbd> for menu</p>
+  </main>
+  <script src="game.js"></script>
+  <script src="net.js"></script>
+</body>
+</html>
