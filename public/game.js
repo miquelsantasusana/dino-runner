@@ -36,6 +36,10 @@ const CFG = {
 
   stepTime: 1 / 120,      // fixed simulation timestep (determinism across clients)
 
+  touchHoldMs: 170,       // touch held longer than this = duck, shorter = jump
+  ghostInterpDelay: 0.1,  // render ghosts this many seconds in their past (smoothing)
+  ghostMaxExtrap: 0.25,   // max seconds to extrapolate a silent ghost forward
+
   colors: {
     day:   { fg: "#535353", bg: "#f7f7f7" },
     night: { fg: "#e8e8e8", bg: "#1b1b1b" },
@@ -238,6 +242,7 @@ class Dino {
   }
 
   reset() {
+    this.x = 40;
     this.y = 0;          // height above ground (0 = on ground)
     this.vy = 0;
     this.jumping = false;
@@ -245,8 +250,8 @@ class Dino {
     this.dead = false;
     this.animTime = 0;
     this.score = 0;      // ghosts carry their reported score
-    this.targetY = 0;    // network interpolation target
-    this.netDuck = false;
+    this.samples = [];   // ghost state packets: {d, y, duck, recvAt}
+    this.deathD = null;  // course distance at which a ghost died
   }
 
   get hitbox() {
@@ -293,13 +298,9 @@ class Dino {
     this.ducking = downHeld && !this.jumping;
   }
 
-  // ghost interpolation step (render-rate dt)
-  netLerp(dt) {
-    this.animTime += dt;
-    if (this.dead) return;
-    this.y += (this.targetY - this.y) * Math.min(1, dt * 12);
-    if (Math.abs(this.targetY - this.y) < 0.5) this.y = this.targetY;
-    this.ducking = this.netDuck && this.y < 4;
+  addSample(d, y, duck) {
+    this.samples.push({ d, y, duck, recvAt: performance.now() });
+    if (this.samples.length > 6) this.samples.shift();
   }
 
   draw(ctx, fg, running) {
@@ -521,8 +522,7 @@ class Game {
   applyState(id, msg) {
     const g = this.ghosts.get(id);
     if (g && !g.dead) {
-      g.targetY = msg.y;
-      g.netDuck = msg.duck;
+      g.addSample(msg.d || 0, msg.y, msg.duck);
       g.score = msg.score;
     }
   }
@@ -532,8 +532,11 @@ class Game {
     if (g) {
       g.dead = true;
       g.y = 0;
-      g.targetY = 0;
       g.score = score;
+      // freeze the corpse at the course position where they died — it then
+      // scrolls away with the world, past the obstacle that killed them
+      const last = g.samples[g.samples.length - 1];
+      g.deathD = last ? last.d : this.distance;
     }
   }
 
@@ -578,10 +581,41 @@ class Game {
       if (e.code === "ArrowDown") this.downHeld = false;
     });
 
+    // Touch / mouse: tap = jump, hold = duck (release ends the duck).
+    // Outside a run, a tap starts / restarts as before.
+    this.touchHoldTimer = null;
+    this.touchDucking = false;
+
     this.canvas.addEventListener("pointerdown", (e) => {
       e.preventDefault();
-      press(true);
+      if (this.state !== STATE.RUNNING) {
+        press(true);
+        return;
+      }
+      this.touchHoldTimer = setTimeout(() => {
+        this.touchHoldTimer = null;
+        this.touchDucking = true;
+        this.downHeld = true;
+      }, CFG.touchHoldMs);
     });
+
+    const endTouch = (jump) => {
+      if (this.touchHoldTimer) {
+        clearTimeout(this.touchHoldTimer);
+        this.touchHoldTimer = null;
+        if (jump && this.state === STATE.RUNNING) this.dino.jump();
+      }
+      if (this.touchDucking) {
+        this.touchDucking = false;
+        this.downHeld = false;
+      }
+    };
+    this.canvas.addEventListener("pointerup", (e) => {
+      e.preventDefault();
+      endTouch(true);
+    });
+    this.canvas.addEventListener("pointercancel", () => endTouch(false));
+    this.canvas.addEventListener("pointerleave", () => endTouch(false));
   }
 
   // -- simulation -----------------------------------------------------------
@@ -664,7 +698,51 @@ class Game {
         this.step(CFG.stepTime);
         this.acc -= CFG.stepTime;
       }
-      for (const g of this.ghosts.values()) g.netLerp(dtReal);
+      this.updateGhosts(dtReal);
+    }
+  }
+
+  // Ghosts are rendered in the sender's time frame: each packet carries the
+  // sender's course distance `d`, and since all clients scroll the identical
+  // course, drawing the ghost at x = 40 - (myDistance - theirD) places it
+  // exactly over the obstacles it was actually facing. Network delay becomes
+  // a small trailing x-offset instead of mistimed jumps ("phantom collisions").
+  updateGhosts(dtReal) {
+    const now = performance.now();
+    const pxPerSec = this.speed * 60;
+    for (const g of this.ghosts.values()) {
+      g.animTime += dtReal;
+      if (g.dead) {
+        if (g.deathD != null) g.x = 40 - (this.distance - g.deathD);
+        continue;
+      }
+      const s = g.samples;
+      if (!s.length) continue;
+      const latest = s[s.length - 1];
+      // estimate their current distance (their world kept scrolling since the
+      // packet was sent), then step back a little so we interpolate between
+      // real samples instead of guessing
+      const age = Math.min(CFG.ghostMaxExtrap, (now - latest.recvAt) / 1000);
+      const dTarget = latest.d + pxPerSec * (age - CFG.ghostInterpDelay);
+      let y, duck, dRender;
+      if (dTarget >= latest.d) {
+        y = latest.y;
+        duck = latest.duck;
+        dRender = dTarget;
+      } else {
+        let i = s.length - 1;
+        while (i > 0 && s[i - 1].d > dTarget) i--;
+        const a = s[Math.max(0, i - 1)];
+        const b = s[i];
+        const span = b.d - a.d;
+        const t = span > 0 ? Math.min(1, Math.max(0, (dTarget - a.d) / span)) : 1;
+        y = a.y + (b.y - a.y) * t;
+        duck = b.duck;
+        dRender = Math.max(dTarget, s[0].d);
+      }
+      g.y = Math.max(0, y);
+      g.ducking = duck && g.y < 4;
+      g.x = 40 - (this.distance - dRender);
     }
   }
 
@@ -746,6 +824,7 @@ class Game {
 
     const animating = this.state === STATE.RUNNING || this.state === STATE.SPECTATE;
     for (const g of this.ghosts.values()) {
+      if (g.x < -70 || g.x > CFG.width) continue; // corpse scrolled away / not yet visible
       ctx.globalAlpha = g.dead ? 0.25 : 0.5;
       g.draw(ctx, fg, animating);
       ctx.globalAlpha = 0.9;

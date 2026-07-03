@@ -16,16 +16,31 @@ html, body {
   position: relative;
 }
 
+body {
+  overscroll-behavior: none;
+}
+
 canvas {
   background: transparent;
   outline: none;
   max-width: 96vw;
+  touch-action: none;              /* keep taps/holds for the game, not scrolling */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;     /* no long-press menu while ducking on iOS */
 }
 
 .hint {
   color: #999;
   font-size: 13px;
   user-select: none;
+}
+
+.touch-hint { display: none; }
+
+@media (pointer: coarse) {
+  .desktop-hint { display: none; }
+  .touch-hint { display: inline; }
 }
 
 kbd {

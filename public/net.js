@@ -70,9 +70,10 @@
           y: Math.round(game.dino.y * 10) / 10,
           duck: game.dino.ducking,
           score: game.score,
+          d: Math.round(game.distance), // course position — lets peers render us in our own time frame
         });
       }
-    }, 66); // ~15 Hz
+    }, 33); // ~30 Hz
   }
 
   function stopStateLoop() {

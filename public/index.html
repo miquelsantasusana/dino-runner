@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Dino Runner — Multiplayer</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -43,7 +43,10 @@
       </section>
     </div>
 
-    <p class="hint">Press <kbd>Space</kbd> / <kbd>&uarr;</kbd> to jump &middot; <kbd>&darr;</kbd> to duck &middot; <kbd>Esc</kbd> for menu</p>
+    <p class="hint">
+      <span class="desktop-hint">Press <kbd>Space</kbd> / <kbd>&uarr;</kbd> to jump &middot; <kbd>&darr;</kbd> to duck &middot; <kbd>Esc</kbd> for menu</span>
+      <span class="touch-hint">Tap to jump &middot; hold to duck</span>
+    </p>
   </main>
   <script src="game.js"></script>
   <script src="net.js"></script>
