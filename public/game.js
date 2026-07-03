@@ -629,7 +629,9 @@ class Game {
   spawnIfNeeded() {
     if (this.distance < this.nextSpawnAt) return;
     const kinds = ["smallCactus", "largeCactus"];
-    if (this.score > CFG.birdScore) kinds.push("bird");
+    // course-distance based, NOT this.score: the local score freezes on death,
+    // and the obstacle stream must stay identical on every client's screen
+    if (Math.floor(this.distance / CFG.scoreDivisor) > CFG.birdScore) kinds.push("bird");
     this.obstacles.push(new Obstacle(this.rng.pick(kinds), CFG.width + 20, this.rng));
     const gap = (CFG.minGap + this.rng.next() * CFG.maxGapExtra) * (0.7 + this.speed / CFG.maxSpeed);
     this.nextSpawnAt = this.distance + gap;
