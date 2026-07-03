@@ -14,6 +14,11 @@
       <section id="menu" class="screen">
         <h1>DINO RUNNER</h1>
         <input id="name" maxlength="12" placeholder="Your name" autocomplete="off" />
+        <div class="avatar-row">
+          <img id="avatar-preview" class="avatar-chip hidden" alt="your face sticker" />
+          <button id="btn-avatar" class="ghost-btn">📷 Add your face</button>
+          <button id="btn-avatar-remove" class="ghost-btn hidden" title="Remove photo">✕</button>
+        </div>
         <div class="btn-row">
           <button id="btn-solo">Play solo</button>
           <button id="btn-create">Create room</button>
@@ -43,12 +48,28 @@
       </section>
     </div>
 
+    <div id="camera-modal" class="hidden">
+      <div class="camera-box">
+        <h2>Center your face</h2>
+        <div class="cam-wrap">
+          <video id="camera-video" playsinline muted autoplay></video>
+          <div class="cam-ring"></div>
+        </div>
+        <div class="btn-row">
+          <button id="btn-camera-snap">Capture</button>
+          <button id="btn-camera-cancel" class="ghost-btn">Cancel</button>
+        </div>
+        <p id="camera-error" class="error"></p>
+      </div>
+    </div>
+
     <p class="hint">
       <span class="desktop-hint">Press <kbd>Space</kbd> / <kbd>&uarr;</kbd> to jump &middot; <kbd>&darr;</kbd> to duck &middot; <kbd>Esc</kbd> for menu</span>
       <span class="touch-hint">Tap to jump &middot; hold to duck</span>
     </p>
   </main>
   <script src="game.js"></script>
+  <script src="avatar.js"></script>
   <script src="net.js"></script>
 </body>
 </html>

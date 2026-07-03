@@ -35,6 +35,24 @@
     return name;
   }
 
+  function getAvatar() {
+    return localStorage.getItem("dino-avatar") || undefined;
+  }
+
+  function faceOrDot(p) {
+    if (p.avatar) {
+      const img = document.createElement("img");
+      img.className = "avatar-chip small";
+      img.src = p.avatar;
+      img.style.borderColor = p.color;
+      return img;
+    }
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = p.color;
+    return dot;
+  }
+
   function connect(then) {
     if (ws && ws.readyState === WebSocket.OPEN) return then();
     const proto = location.protocol === "https:" ? "wss://" : "ws://";
@@ -136,10 +154,7 @@
     list.innerHTML = "";
     for (const p of m.players) {
       const li = document.createElement("li");
-      const dot = document.createElement("span");
-      dot.className = "dot";
-      dot.style.background = p.color;
-      li.appendChild(dot);
+      li.appendChild(faceOrDot(p));
       li.appendChild(document.createTextNode(p.name + (p.id === m.hostId ? " (host)" : "") + (p.id === you ? " — you" : "")));
       list.appendChild(li);
     }
@@ -165,10 +180,7 @@
     list.innerHTML = "";
     m.standings.forEach((p, i) => {
       const li = document.createElement("li");
-      const dot = document.createElement("span");
-      dot.className = "dot";
-      dot.style.background = p.color;
-      li.appendChild(dot);
+      li.appendChild(faceOrDot(p));
       li.appendChild(document.createTextNode(`${p.name} — ${String(p.score).padStart(5, "0")}`));
       if (i === 0) li.classList.add("winner");
       list.appendChild(li);
@@ -183,13 +195,13 @@
   });
 
   $("#btn-create").addEventListener("click", () => {
-    connect(() => send({ t: "create", name: getName() }));
+    connect(() => send({ t: "create", name: getName(), avatar: getAvatar() }));
   });
 
   $("#btn-join").addEventListener("click", () => {
     const code = $("#join-code").value.trim().toUpperCase();
     if (code.length !== 4) return setError("Enter the 4-letter room code");
-    connect(() => send({ t: "join", code, name: getName() }));
+    connect(() => send({ t: "join", code, name: getName(), avatar: getAvatar() }));
   });
 
   $("#join-code").addEventListener("keydown", (e) => {

@@ -90,8 +90,13 @@ function lobbyMsg(room) {
     code: room.code,
     hostId: room.hostId,
     phase: room.phase,
-    players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color })),
+    players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar })),
   };
+}
+
+// small data-URL image or nothing — never trust client sizes
+function cleanAvatar(a) {
+  return typeof a === "string" && a.startsWith("data:image/") && a.length <= 24000 ? a : null;
 }
 
 function freeColor(room) {
@@ -112,7 +117,7 @@ function startRace(room) {
     t: "start",
     seed: room.seed,
     countdown: COUNTDOWN_MS,
-    players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color })),
+    players: [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar })),
   });
 }
 
@@ -187,6 +192,7 @@ wss.on("connection", (ws) => {
       case "create": {
         if (room) leaveRoom(player);
         player.name = String(msg.name || "anon").slice(0, 12);
+        player.avatar = cleanAvatar(msg.avatar);
         const newRoom = {
           code: makeCode(),
           players: new Map(),
@@ -210,6 +216,7 @@ wss.on("connection", (ws) => {
         if (target.phase !== "lobby") return send(ws, { t: "error", msg: "Race already in progress" });
         if (target.players.size >= MAX_PLAYERS) return send(ws, { t: "error", msg: "Room is full" });
         player.name = String(msg.name || "anon").slice(0, 12);
+        player.avatar = cleanAvatar(msg.avatar);
         player.color = freeColor(target);
         target.players.set(player.id, player);
         player.room = target;

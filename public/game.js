@@ -238,7 +238,16 @@ class Dino {
     this.name = name;
     this.x = 40;
     this.labelRow = 0;
+    this.avatarImg = null; // face sticker drawn over the head
     this.reset();
+  }
+
+  setAvatarUrl(url) {
+    this.avatarImg = null;
+    if (!url) return;
+    const img = new Image();
+    img.onload = () => { this.avatarImg = img; };
+    img.src = url;
   }
 
   reset() {
@@ -313,6 +322,7 @@ class Dino {
       drawSprite(ctx, DINO_DUCK.body, this.x, top, s, color);
       const legs = frame === 0 ? DINO_DUCK.legs1 : DINO_DUCK.legs2;
       drawSprite(ctx, legs, this.x, top + DINO_DUCK.body.length * s, s, color);
+      this.drawFace(ctx, this.x + 21.5 * s, top + 3.5 * s, 6.5 * s);
       return;
     }
 
@@ -327,6 +337,29 @@ class Dino {
       ctx.fillStyle = color;
       ctx.fillRect(this.x + 9 * s, top + 1 * s, s, s);
     }
+
+    this.drawFace(ctx, this.x + 13 * s, top + 3 * s, 7.5 * s);
+  }
+
+  // circular photo sticker over the head, slightly larger than the pixel head
+  drawFace(ctx, cx, cy, r) {
+    if (!this.avatarImg) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(this.avatarImg, cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#fff";           // sticker edge
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 1.5, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,0.2)"; // subtle rim so it reads on light bg
+    ctx.stroke();
   }
 
   drawLabel(ctx, fg) {
@@ -495,8 +528,13 @@ class Game {
     this.ghosts.clear();
     this.dino.color = null;
     this.dino.name = "";
+    this.refreshLocalAvatar();
     this.resetWorld();
     this.state = STATE.WAITING;
+  }
+
+  refreshLocalAvatar() {
+    if (this.mode === "solo") this.dino.setAvatarUrl(localStorage.getItem("dino-avatar"));
   }
 
   startNet(seed, roster, localId, countdownMs) {
@@ -508,9 +546,11 @@ class Game {
         this.dino.color = p.color;
         this.dino.name = p.name;
         this.dino.labelRow = 0;
+        this.dino.setAvatarUrl(p.avatar);
       } else {
         const g = new Dino(p.color, p.name);
         g.labelRow = (row++ % 3) + 1;
+        g.setAvatarUrl(p.avatar);
         this.ghosts.set(p.id, g);
       }
     }
@@ -547,6 +587,7 @@ class Game {
     this.ghosts.clear();
     this.dino.color = null;
     this.dino.name = "";
+    this.refreshLocalAvatar();
     this.resetWorld();
     this.state = STATE.IDLE;
   }

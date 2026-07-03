@@ -188,3 +188,92 @@ kbd {
   display: inline-block;
   flex: none;
 }
+
+/* ---- face sticker ---- */
+.avatar-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.avatar-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #535353;
+  flex: none;
+}
+
+.avatar-chip.small {
+  width: 24px;
+  height: 24px;
+}
+
+#camera-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+#camera-modal.hidden { display: none; }
+
+.camera-box {
+  background: #fff;
+  border: 2px solid #535353;
+  border-radius: 8px;
+  padding: 18px 26px;
+  text-align: center;
+  font-family: "Courier New", monospace;
+  color: #535353;
+}
+
+.camera-box h2 { margin: 0 0 12px; font-size: 17px; }
+
+.cam-wrap {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  margin: 0 auto 14px;
+}
+
+#camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  transform: scaleX(-1); /* mirror like a selfie; capture mirrors to match */
+  background: #222;
+}
+
+.cam-ring {
+  position: absolute;
+  inset: 14%;
+  border: 3px dashed rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.camera-box button {
+  font-family: inherit;
+  font-weight: bold;
+  font-size: 14px;
+  padding: 9px 16px;
+  border: 2px solid #535353;
+  border-radius: 4px;
+  background: #535353;
+  color: #fff;
+  cursor: pointer;
+}
+
+.camera-box .ghost-btn {
+  background: transparent;
+  color: #535353;
+  border-color: #bbb;
+}
