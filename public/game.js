@@ -582,11 +582,17 @@ class Game {
     });
 
     // Touch / mouse: tap = jump, hold = duck (release ends the duck).
-    // Outside a run, a tap starts / restarts as before.
+    // Listens on the whole page — players naturally tap below the game so
+    // their finger doesn't cover the action. Real UI (buttons, inputs,
+    // links, overlay screens) is excluded and behaves normally.
     this.touchHoldTimer = null;
     this.touchDucking = false;
 
-    this.canvas.addEventListener("pointerdown", (e) => {
+    const isUiTarget = (e) =>
+      e.target.closest && e.target.closest("#screens, button, input, a, kbd") !== null;
+
+    document.addEventListener("pointerdown", (e) => {
+      if (isUiTarget(e)) return;
       e.preventDefault();
       if (this.state !== STATE.RUNNING) {
         press(true);
@@ -610,12 +616,13 @@ class Game {
         this.downHeld = false;
       }
     };
-    this.canvas.addEventListener("pointerup", (e) => {
+    document.addEventListener("pointerup", (e) => {
+      if (isUiTarget(e)) return;
       e.preventDefault();
       endTouch(true);
     });
-    this.canvas.addEventListener("pointercancel", () => endTouch(false));
-    this.canvas.addEventListener("pointerleave", () => endTouch(false));
+    document.addEventListener("pointercancel", () => endTouch(false));
+    window.addEventListener("blur", () => endTouch(false));
   }
 
   // -- simulation -----------------------------------------------------------
