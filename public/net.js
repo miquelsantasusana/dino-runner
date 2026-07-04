@@ -29,6 +29,17 @@
   let hostId = null;
   let roomCode = null;
   let stateTimer = null;
+  let reconnectTimer = null;
+  let reconnectDeadline = 0;
+  let silentRejoin = false; // suppress errors for speculative rejoin attempts
+
+  // stable per-device identity so the server can hold our seat while the
+  // phone is backgrounded (WhatsApp trip) or the tab gets reloaded
+  let token = localStorage.getItem("dino-token");
+  if (!token) {
+    token = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random().toString(36).slice(2);
+    localStorage.setItem("dino-token", token);
+  }
 
   function getName() {
     const name = $("#name").value.trim() || "anon";
@@ -62,13 +73,42 @@
     ws.onmessage = (e) => onMessage(JSON.parse(e.data));
     ws.onclose = () => {
       stopStateLoop();
-      if (roomCode) {
+      if (!roomCode) return;
+      // don't drop the room — quietly try to reclaim our seat for a while.
+      // only a fresh outage resets the give-up deadline, not every failed retry
+      if (!reconnectTimer) {
+        if (Date.now() > reconnectDeadline) reconnectDeadline = Date.now() + 3 * 60 * 1000;
+        setStatus("Reconnecting…");
+        scheduleReconnect(1000);
+      }
+    };
+  }
+
+  function scheduleReconnect(delay) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      if (!roomCode) return;
+      if (Date.now() > reconnectDeadline) {
         roomCode = null;
         game.toIdle();
         show("menu");
         setError("Connection lost");
+        return;
       }
-    };
+      connect(() => send({ t: "rejoin", token })); // onclose reschedules on failure
+    }, delay);
+  }
+
+  function clearReconnect() {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    setStatus("");
+  }
+
+  function setStatus(text) {
+    $("#net-status").textContent = text;
+    $("#net-status").classList.toggle("hidden", !text);
   }
 
   function send(msg) {
@@ -105,7 +145,10 @@
     switch (m.t) {
       case "joined":
         you = m.you;
+        silentRejoin = false;
+        clearReconnect();
         applyLobby(m);
+        if (m.phase === "playing") setStatus("Race in progress — you'll join the next round");
         show("lobby");
         setError("");
         break;
@@ -115,11 +158,18 @@
         break;
 
       case "error":
+        if (silentRejoin) {
+          silentRejoin = false; // speculative boot rejoin found nothing — stay quiet
+          return;
+        }
+        clearReconnect();
+        roomCode = null;
         setError(m.msg);
         show("menu");
         break;
 
       case "start":
+        setStatus("");
         show(null);
         game.onDeath = (score) => send({ t: "died", score });
         game.startNet(m.seed, m.players, you, m.countdown);
@@ -156,7 +206,12 @@
     for (const p of m.players) {
       const li = document.createElement("li");
       li.appendChild(faceOrDot(p));
-      li.appendChild(document.createTextNode(p.name + (p.id === m.hostId ? " (host)" : "") + (p.id === you ? " — you" : "")));
+      let label = p.name + (p.id === m.hostId ? " (host)" : "") + (p.id === you ? " — you" : "");
+      if (p.connected === false) {
+        label += " (away)";
+        li.classList.add("away");
+      }
+      li.appendChild(document.createTextNode(label));
       list.appendChild(li);
     }
 
@@ -196,13 +251,13 @@
   });
 
   $("#btn-create").addEventListener("click", () => {
-    connect(() => send({ t: "create", name: getName(), avatar: getAvatar() }));
+    connect(() => send({ t: "create", name: getName(), avatar: getAvatar(), token }));
   });
 
   $("#btn-join").addEventListener("click", () => {
     const code = $("#join-code").value.trim().toUpperCase();
     if (code.length !== 4) return setError("Enter the 4-letter room code");
-    connect(() => send({ t: "join", code, name: getName(), avatar: getAvatar() }));
+    connect(() => send({ t: "join", code, name: getName(), avatar: getAvatar(), token }));
   });
 
   $("#join-code").addEventListener("keydown", (e) => {
@@ -215,6 +270,7 @@
   const leave = () => {
     send({ t: "leave" });
     stopStateLoop();
+    clearReconnect();
     roomCode = null;
     game.toIdle();
     show("menu");
@@ -241,6 +297,14 @@
     }
   });
 
+  // coming back from another app: reclaim the seat right away if the socket died
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && roomCode && (!ws || ws.readyState !== WebSocket.OPEN)) {
+      reconnectDeadline = Date.now() + 3 * 60 * 1000;
+      scheduleReconnect(50);
+    }
+  });
+
   // -- boot -----------------------------------------------------------------------
   $("#name").value = localStorage.getItem("dino-name") || "";
   const params = new URLSearchParams(location.search);
@@ -248,4 +312,9 @@
     $("#join-code").value = params.get("room").toUpperCase().slice(0, 4);
   }
   show("menu");
+
+  // mobile browsers often reload the tab on return — if the server still holds
+  // a seat for this device, silently drop back into that lobby
+  silentRejoin = true;
+  connect(() => send({ t: "rejoin", token }));
 })();

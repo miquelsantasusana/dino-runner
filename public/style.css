@@ -188,6 +188,8 @@ kbd {
   gap: 8px;
 }
 
+#player-list li.away { opacity: 0.45; }
+
 #standings li::before {
   counter-increment: place;
   content: counter(place) ".";
