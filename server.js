@@ -96,7 +96,7 @@ function lobbyMsg(room) {
 
 // small data-URL image or nothing — never trust client sizes
 function cleanAvatar(a) {
-  return typeof a === "string" && a.startsWith("data:image/") && a.length <= 24000 ? a : null;
+  return typeof a === "string" && a.startsWith("data:image/") && a.length <= 64000 ? a : null;
 }
 
 function freeColor(room) {

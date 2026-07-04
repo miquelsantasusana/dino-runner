@@ -36,7 +36,7 @@ const CFG = {
 
   stepTime: 1 / 120,      // fixed simulation timestep (determinism across clients)
 
-  touchHoldMs: 170,       // touch held longer than this = duck, shorter = jump
+  touchHoldMs: 260,       // touch held longer than this = duck, shorter = jump
   ghostInterpDelay: 0.1,  // render ghosts this many seconds in their past (smoothing)
   ghostMaxExtrap: 0.25,   // max seconds to extrapolate a silent ghost forward
 
@@ -245,6 +245,9 @@ class Dino {
   setAvatarUrl(url) {
     this.avatarImg = null;
     if (!url) return;
+    // old captures were circle-cropped JPEGs; new stickers (png/webp) have
+    // the oval cut-out and white edge baked in
+    this.avatarLegacy = url.startsWith("data:image/jpeg");
     const img = new Image();
     img.onload = () => { this.avatarImg = img; };
     img.src = url;
@@ -322,7 +325,7 @@ class Dino {
       drawSprite(ctx, DINO_DUCK.body, this.x, top, s, color);
       const legs = frame === 0 ? DINO_DUCK.legs1 : DINO_DUCK.legs2;
       drawSprite(ctx, legs, this.x, top + DINO_DUCK.body.length * s, s, color);
-      this.drawFace(ctx, this.x + 21.5 * s, top + 3.5 * s, 6.5 * s);
+      this.drawFace(ctx, this.x + 21.5 * s, top + 2.5 * s, 16 * s);
       return;
     }
 
@@ -338,28 +341,29 @@ class Dino {
       ctx.fillRect(this.x + 9 * s, top + 1 * s, s, s);
     }
 
-    this.drawFace(ctx, this.x + 13 * s, top + 3 * s, 7.5 * s);
+    this.drawFace(ctx, this.x + 13 * s, top + 1 * s, 21 * s);
   }
 
-  // circular photo sticker over the head, slightly larger than the pixel head
-  drawFace(ctx, cx, cy, r) {
+  // photo sticker over the head — face cut-out, larger than the pixel head
+  // so it pokes above the body like a real sticker slapped on the dino
+  drawFace(ctx, cx, cy, size) {
     if (!this.avatarImg) return;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(this.avatarImg, cx - r, cy - r, r * 2, r * 2);
-    ctx.restore();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = "#fff";           // sticker edge
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 1.5, 0, Math.PI * 2);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(0,0,0,0.2)"; // subtle rim so it reads on light bg
-    ctx.stroke();
+    if (this.avatarLegacy) {
+      const r = size * 0.36;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(this.avatarImg, cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#fff";
+      ctx.stroke();
+      return;
+    }
+    ctx.drawImage(this.avatarImg, cx - size / 2, cy - size / 2, size, size);
   }
 
   drawLabel(ctx, fg) {
@@ -367,7 +371,7 @@ class Dino {
     ctx.fillStyle = this.color || fg;
     ctx.font = "bold 11px 'Courier New', monospace";
     ctx.textAlign = "left";
-    const y = this.groundTop() - 8 - this.labelRow * 12;
+    const y = this.groundTop() - 8 - this.labelRow * 12 - (this.avatarImg ? 16 : 0);
     ctx.fillText(this.name, this.x + 4, Math.max(12, y));
   }
 }

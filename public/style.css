@@ -16,6 +16,8 @@ html, body {
   position: relative;
 }
 
+.hidden { display: none !important; }
+
 body {
   overscroll-behavior: none;
   touch-action: none;              /* whole page is a game input surface */
@@ -59,6 +61,20 @@ kbd {
   border-radius: 4px;
   padding: 1px 5px;
   font-size: 12px;
+}
+
+#btn-home {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  font-size: 18px;
+  line-height: 1;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px solid #535353;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 /* ---- overlay screens ---- */
@@ -254,7 +270,7 @@ kbd {
 
 .cam-ring {
   position: absolute;
-  inset: 14%;
+  inset: 8% 17%; /* oval — matches the sticker crop */
   border: 3px dashed rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   pointer-events: none;

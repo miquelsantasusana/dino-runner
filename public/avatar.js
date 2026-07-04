@@ -9,11 +9,46 @@
 (() => {
   const $ = (sel) => document.querySelector(sel);
   const KEY = "dino-avatar";
-  const SIZE = 96; // stored sticker resolution — keeps the data URL a few KB
+  const SIZE = 112; // stored sticker resolution — keeps the data URL small
 
   const modal = $("#camera-modal");
   const video = $("#camera-video");
   let stream = null;
+
+  // Cut-out sticker: tight crop on the face, oval mask with a baked-in white
+  // sticker edge, transparent corners. Stored as PNG (WebP where supported).
+  function makeSticker() {
+    const c = document.createElement("canvas");
+    c.width = c.height = SIZE;
+    const ctx = c.getContext("2d");
+    const side = Math.min(video.videoWidth, video.videoHeight) / 1.8; // face-only zoom
+    const sx = (video.videoWidth - side) / 2;
+    const sy = Math.max(0, (video.videoHeight - side) / 2 - side * 0.12);
+    ctx.translate(SIZE, 0);
+    ctx.scale(-1, 1); // mirror to match the selfie preview
+    ctx.drawImage(video, sx, sy, side, side, 0, 0, SIZE, SIZE);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const oval = (rx, ry) => {
+      ctx.beginPath();
+      ctx.ellipse(SIZE / 2, SIZE / 2, rx, ry, 0, 0, Math.PI * 2);
+    };
+    ctx.globalCompositeOperation = "destination-in"; // keep only the oval
+    oval(46, 52);
+    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+    oval(46, 52);                                    // white sticker edge
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#fff";
+    ctx.stroke();
+    oval(48.5, 54.5);                                // faint rim for light bg
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(0,0,0,0.15)";
+    ctx.stroke();
+
+    const webp = c.toDataURL("image/webp", 0.85);
+    return webp.startsWith("data:image/webp") ? webp : c.toDataURL("image/png");
+  }
 
   function refreshPreview() {
     const url = localStorage.getItem(KEY);
@@ -58,18 +93,7 @@
 
   function snap() {
     if (!stream || !video.videoWidth) return;
-    const c = document.createElement("canvas");
-    c.width = c.height = SIZE;
-    const ctx = c.getContext("2d");
-    // center square crop, zoomed in a touch and biased up toward the face;
-    // mirrored so the sticker matches the mirrored preview people pose with
-    const side = Math.min(video.videoWidth, video.videoHeight) / 1.3;
-    const sx = (video.videoWidth - side) / 2;
-    const sy = Math.max(0, (video.videoHeight - side) / 2 - side * 0.08);
-    ctx.translate(SIZE, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, sx, sy, side, side, 0, 0, SIZE, SIZE);
-    localStorage.setItem(KEY, c.toDataURL("image/jpeg", 0.85));
+    localStorage.setItem(KEY, makeSticker());
     closeCamera();
     refreshPreview();
   }

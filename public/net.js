@@ -20,6 +20,7 @@
       screens[key].classList.toggle("hidden", key !== name);
     }
     $("#screens").classList.toggle("hidden", !name);
+    $("#btn-home").classList.toggle("hidden", !!name); // home only while playing
   }
 
   // -- connection state -------------------------------------------------------
@@ -221,6 +222,16 @@
   };
   $("#btn-leave").addEventListener("click", leave);
   $("#btn-lobby-leave").addEventListener("click", leave);
+
+  // home button (mobile has no Esc): leaves the room in net mode
+  $("#btn-home").addEventListener("click", () => {
+    if (game.mode === "net") {
+      leave();
+    } else {
+      game.toIdle();
+      show("menu");
+    }
+  });
 
   // Esc returns to menu from a solo run
   document.addEventListener("keydown", (e) => {
