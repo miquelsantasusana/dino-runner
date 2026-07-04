@@ -800,7 +800,9 @@ class Game {
       }
       g.y = Math.max(0, y);
       g.ducking = duck && g.y < 4;
-      g.x = 40 - (this.distance - dRender);
+      // clamp living ghosts on screen: a peer whose clock/network lags far
+      // behind would otherwise trail off the left edge and vanish entirely
+      g.x = Math.max(4, Math.min(CFG.width - 80, 40 - (this.distance - dRender)));
     }
   }
 

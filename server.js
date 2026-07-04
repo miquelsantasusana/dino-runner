@@ -54,7 +54,10 @@ const server = http.createServer((req, res) => {
       res.writeHead(404);
       return res.end("not found");
     }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(filePath)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": MIME[path.extname(filePath)] || "application/octet-stream",
+      "Cache-Control": "no-cache", // clients must revalidate so deploys reach every phone
+    });
     res.end(data);
   });
 });

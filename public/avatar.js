@@ -72,7 +72,10 @@
     return c;
   }
 
-  // person pixels only, soft edge preserved
+  // person pixels only, soft edge preserved — then intersected with the same
+  // oval the on-screen guide shows, so shoulders/neck outside it are dropped
+  // and only the face region survives (segmentation trims the background,
+  // the oval trims the body)
   function cutOut(frame, mask) {
     const c = document.createElement("canvas");
     c.width = frame.width;
@@ -81,6 +84,11 @@
     ctx.drawImage(mask, 0, 0, c.width, c.height);
     ctx.globalCompositeOperation = "source-in";
     ctx.drawImage(frame, 0, 0);
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.beginPath();
+    // matches .cam-ring (inset 8% vertical, 17% horizontal)
+    ctx.ellipse(c.width / 2, c.height / 2, c.width * 0.33, c.height * 0.42, 0, 0, Math.PI * 2);
+    ctx.fill();
     return c;
   }
 
@@ -146,21 +154,24 @@
     return out;
   }
 
-  // fallback when segmentation is unavailable: oval crop with sticker edge
+  // fallback when segmentation is unavailable: crop exactly the guide oval
   function ovalSticker(frame) {
+    const sx = frame.width * 0.17, sy = frame.height * 0.08;
+    const sw = frame.width * 0.66, sh = frame.height * 0.84;
+    const h = SIZE;
+    const w = Math.round(SIZE * (sw / sh)); // keep the guide's tall aspect
     const c = document.createElement("canvas");
-    c.width = c.height = SIZE;
+    c.width = w;
+    c.height = h;
     const ctx = c.getContext("2d");
-    ctx.drawImage(frame, 0, 0, frame.width, frame.height, 0, 0, SIZE, SIZE);
-    const oval = (rx, ry) => {
-      ctx.beginPath();
-      ctx.ellipse(SIZE / 2, SIZE / 2, rx, ry, 0, 0, Math.PI * 2);
-    };
+    ctx.drawImage(frame, sx, sy, sw, sh, 0, 0, w, h);
     ctx.globalCompositeOperation = "destination-in";
-    oval(SIZE * 0.41, SIZE * 0.46);
+    ctx.beginPath();
+    ctx.ellipse(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
-    oval(SIZE * 0.41, SIZE * 0.46);
+    ctx.beginPath();
+    ctx.ellipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 0, 0, Math.PI * 2);
     ctx.lineWidth = 5;
     ctx.strokeStyle = "#fff";
     ctx.stroke();
