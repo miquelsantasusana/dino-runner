@@ -207,6 +207,40 @@ kbd {
   flex: none;
 }
 
+/* ---- jumpscare ---- */
+#jumpscare {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#jumpscare canvas {
+  width: min(140vw, 140vh);
+  height: min(140vw, 140vh);
+  animation:
+    js-lunge 0.45s cubic-bezier(0.2, 0.9, 0.25, 1) forwards,
+    js-shake 0.4s linear 0.12s infinite;
+}
+
+@keyframes js-lunge {
+  from { transform: scale(0.12); opacity: 0.3; }
+  to   { transform: scale(1.15); opacity: 1; }
+}
+
+@keyframes js-shake {
+  0%   { translate: 0 0; }
+  20%  { translate: 16px -12px; }
+  40%  { translate: -14px 10px; }
+  60%  { translate: 12px 14px; }
+  80%  { translate: -16px -10px; }
+  100% { translate: 0 0; }
+}
+
 /* ---- face sticker ---- */
 .avatar-row {
   display: flex;

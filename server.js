@@ -294,7 +294,7 @@ wss.on("connection", (ws) => {
       case "state": {
         if (!room || room.phase !== "playing" || !player.alive) return;
         player.score = msg.score | 0;
-        broadcast(room, { t: "state", id: player.id, y: msg.y, duck: !!msg.duck, score: player.score, d: msg.d | 0 }, player.id);
+        broadcast(room, { t: "state", id: player.id, y: msg.y, duck: !!msg.duck, score: player.score, d: msg.d | 0, l: msg.l | 0, inv: !!msg.inv }, player.id);
         break;
       }
 

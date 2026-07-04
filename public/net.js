@@ -130,6 +130,8 @@
           duck: game.dino.ducking,
           score: game.score,
           d: Math.round(game.distance), // course position — lets peers render us in our own time frame
+          l: game.dino.lives,
+          inv: game.dino.invincibleFor > 0,
         });
       }
     }, 33); // ~30 Hz

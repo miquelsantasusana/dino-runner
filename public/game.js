@@ -37,6 +37,9 @@ const CFG = {
   stepTime: 1 / 120,      // fixed simulation timestep (determinism across clients)
 
   touchHoldMs: 260,       // touch held longer than this = duck, shorter = jump
+
+  lives: 3,               // per dino in multiplayer races (solo stays 1-hit)
+  invincibleTime: 2.5,    // seconds of blinking invulnerability after a hit
   ghostInterpDelay: 0.1,  // render ghosts this many seconds in their past (smoothing)
   ghostMaxExtrap: 0.25,   // max seconds to extrapolate a silent ghost forward
 
@@ -190,6 +193,14 @@ const CLOUD = [
   "XXXXXXXXXXXXXXXXXXXX",
 ];
 
+const HEART = [
+  ".X.X.",
+  "XXXXX",
+  "XXXXX",
+  ".XXX.",
+  "..X..",
+];
+
 function spriteSize(map, scale) {
   return { w: map[0].length * scale, h: map.length * scale };
 }
@@ -264,6 +275,9 @@ class Dino {
     this.score = 0;      // ghosts carry their reported score
     this.samples = [];   // ghost state packets: {d, y, duck, recvAt}
     this.deathD = null;  // course distance at which a ghost died
+    this.lives = 1;      // multiplayer bumps this to CFG.lives
+    this.invincibleFor = 0;
+    this.netInv = false; // ghost blinking, reported by its owner
   }
 
   get hitbox() {
@@ -296,6 +310,7 @@ class Dino {
   // local physics step (fixed dt)
   update(dt, downHeld) {
     this.animTime += dt;
+    if (this.invincibleFor > 0) this.invincibleFor -= dt;
     if (this.jumping) {
       let g = CFG.gravity;
       if (downHeld) g += CFG.dropBoost;
@@ -316,6 +331,10 @@ class Dino {
   }
 
   draw(ctx, fg, running) {
+    // invincibility blink: skip every other flash interval
+    if (!this.dead && (this.invincibleFor > 0 || this.netInv) && Math.floor(this.animTime * 10) % 2 === 0) {
+      return;
+    }
     const s = CFG.scale;
     const color = this.color || fg;
     const frame = Math.floor(this.animTime * 10) % 2;
@@ -375,8 +394,14 @@ class Dino {
     ctx.fillStyle = this.color || fg;
     ctx.font = "bold 11px 'Courier New', monospace";
     ctx.textAlign = "left";
-    const y = this.groundTop() - 8 - this.labelRow * 12 - (this.avatarImg ? 16 : 0);
-    ctx.fillText(this.name, this.x + 4, Math.max(12, y));
+    const y = Math.max(12, this.groundTop() - 8 - this.labelRow * 12 - (this.avatarImg ? 16 : 0));
+    ctx.fillText(this.name, this.x + 4, y);
+    if (!this.dead && this.lives > 0) {
+      const tw = ctx.measureText(this.name).width;
+      for (let i = 0; i < this.lives; i++) {
+        drawSprite(ctx, HEART, this.x + 8 + tw + i * 8, y - 6, 1.2, "#e0245e");
+      }
+    }
   }
 }
 
@@ -563,6 +588,8 @@ class Game {
       }
     }
     this.resetWorld(seed);
+    this.dino.lives = CFG.lives;
+    for (const g of this.ghosts.values()) g.lives = CFG.lives;
     this.countdownEnd = performance.now() + countdownMs;
     this.state = STATE.COUNTDOWN;
   }
@@ -572,6 +599,8 @@ class Game {
     if (g && !g.dead) {
       g.addSample(msg.d || 0, msg.y, msg.duck);
       g.score = msg.score;
+      if (typeof msg.l === "number") g.lives = msg.l;
+      g.netInv = !!msg.inv;
     }
   }
 
@@ -714,18 +743,28 @@ class Game {
     for (const o of this.obstacles) o.update(dt, this.speed);
     this.obstacles = this.obstacles.filter((o) => !o.offscreen);
 
-    if (this.state === STATE.RUNNING) {
+    if (this.state === STATE.RUNNING && this.dino.invincibleFor <= 0) {
       const box = this.dino.hitbox;
       for (const o of this.obstacles) {
         if (this.collide(box, o.hitbox)) {
-          this.localDeath();
+          this.hit();
           break;
         }
       }
     }
   }
 
+  hit() {
+    this.dino.lives--;
+    if (this.dino.lives > 0) {
+      this.dino.invincibleFor = CFG.invincibleTime; // keep running, blinking
+    } else {
+      this.localDeath();
+    }
+  }
+
   localDeath() {
+    if (window.playJumpscare) window.playJumpscare(); // local only — nobody else sees it
     this.dino.dead = true;
     this.dino.ducking = false;
     if (this.mode === "solo") {
@@ -821,6 +860,13 @@ class Game {
     return { fg: mix(d.fg, n.fg), bg: mix(d.bg, n.bg) };
   }
 
+  drawLivesHud(ctx) {
+    if (this.mode !== "net" || this.state === STATE.IDLE) return;
+    for (let i = 0; i < this.dino.lives; i++) {
+      drawSprite(ctx, HEART, 18 + i * 18, 16, 3, "#e0245e");
+    }
+  }
+
   drawScore(ctx, fg) {
     ctx.fillStyle = fg;
     ctx.font = "bold 16px 'Courier New', monospace";
@@ -895,6 +941,7 @@ class Game {
     if (this.mode === "net") this.dino.drawLabel(ctx, fg);
 
     this.drawScore(ctx, fg);
+    this.drawLivesHud(ctx);
     this.drawCenterText(ctx, fg);
   }
 
