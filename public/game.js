@@ -363,7 +363,11 @@ class Dino {
       ctx.stroke();
       return;
     }
-    ctx.drawImage(this.avatarImg, cx - size / 2, cy - size / 2, size, size);
+    // keep the sticker's natural aspect: height = size, width follows
+    const iw = this.avatarImg.width, ih = this.avatarImg.height;
+    const h = size;
+    const w = size * (iw / ih);
+    ctx.drawImage(this.avatarImg, cx - w / 2, cy - h / 2, w, h);
   }
 
   drawLabel(ctx, fg) {

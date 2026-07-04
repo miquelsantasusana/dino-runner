@@ -56,13 +56,15 @@
   }
 
   // -- sticker pipeline ------------------------------------------------------
+  // capture exactly the square the on-screen guide overlays (the video is
+  // object-fit: cover, so what's displayed is the centered min-dimension square)
   function grabFrame() {
     const c = document.createElement("canvas");
     c.width = c.height = FRAME;
     const ctx = c.getContext("2d");
-    const side = Math.min(video.videoWidth, video.videoHeight) / 1.5;
+    const side = Math.min(video.videoWidth, video.videoHeight);
     const sx = (video.videoWidth - side) / 2;
-    const sy = Math.max(0, (video.videoHeight - side) / 2 - side * 0.1);
+    const sy = (video.videoHeight - side) / 2;
     ctx.translate(FRAME, 0);
     ctx.scale(-1, 1); // mirror to match the selfie preview
     ctx.drawImage(video, sx, sy, side, side, 0, 0, FRAME, FRAME);
@@ -100,35 +102,40 @@
     const pad = Math.round(c.width * 0.04);
     const x = Math.max(0, minX - pad);
     const y = Math.max(0, minY - pad);
-    return {
-      x,
-      y,
-      w: Math.min(c.width, maxX + pad) - x,
-      h: Math.min(c.height, maxY + pad) - y,
-    };
+    const w = Math.min(c.width, maxX + pad) - x;
+    let h = Math.min(c.height, maxY + pad) - y;
+    // faces are tall ovals: keep the head (anchored at the top of the person)
+    // and drop chest/shoulders if the mask runs down to the frame edge
+    h = Math.min(h, w * 1.45);
+    return { x, y, w, h };
   }
 
-  // scale the cutout into the final square and stamp the white sticker edge
-  // (the outline is the cutout's own silhouette drawn at offsets around it)
+  // scale the cutout and stamp the white sticker edge (the outline is the
+  // cutout's own silhouette drawn at offsets around it). The output canvas
+  // keeps the face's natural aspect — tall oval, not a square.
   function finishSticker(cutout, box) {
-    const inner = SIZE - 14;
-    const scale = Math.min(inner / box.w, inner / box.h);
-    const w = box.w * scale, h = box.h * scale;
+    const margin = 8; // room for the outline
+    const scale = (SIZE - margin * 2) / Math.max(box.w, box.h);
+    const w = Math.round(box.w * scale);
+    const h = Math.round(box.h * scale);
 
     const base = document.createElement("canvas");
-    base.width = base.height = SIZE;
-    base.getContext("2d").drawImage(cutout, box.x, box.y, box.w, box.h, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+    base.width = w + margin * 2;
+    base.height = h + margin * 2;
+    base.getContext("2d").drawImage(cutout, box.x, box.y, box.w, box.h, margin, margin, w, h);
 
     const sil = document.createElement("canvas");
-    sil.width = sil.height = SIZE;
+    sil.width = base.width;
+    sil.height = base.height;
     const sctx = sil.getContext("2d");
     sctx.drawImage(base, 0, 0);
     sctx.globalCompositeOperation = "source-in";
     sctx.fillStyle = "#fff";
-    sctx.fillRect(0, 0, SIZE, SIZE);
+    sctx.fillRect(0, 0, sil.width, sil.height);
 
     const out = document.createElement("canvas");
-    out.width = out.height = SIZE;
+    out.width = base.width;
+    out.height = base.height;
     const octx = out.getContext("2d");
     const R = 4;
     for (let i = 0; i < 16; i++) {
